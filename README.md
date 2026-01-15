@@ -158,6 +158,20 @@ Create a `config/config.json` file with the following structure:
 - [Architecture Guide](docs/generated/architecture.md) - System design, components, and data flow
 - [Usage Guide](docs/generated/usage.md) - Detailed configuration and usage instructions
 
+## E2E Testing
+
+Automated E2E script (local DB only, remote remains read-only):
+```bash
+bun scripts/e2e_sync.js [table_name]
+```
+
+This script creates minimal diffs (insert/update/delete), exercises dry-run, per-table, full-sync, and YOLO flows, and writes a report to `logs/e2e-sync-report.json` (gitignored).
+
+For scale checks on a larger table:
+```bash
+bun run sync -- --tables <large_table> --full-sync --dry-run
+```
+
 ## Project Structure
 
 ```

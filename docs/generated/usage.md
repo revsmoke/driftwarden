@@ -408,3 +408,18 @@ Error logs include stack traces for debugging:
 ```json
 {"timestamp":"2024-01-15T10:30:02.000Z","level":"ERROR","message":"Connection failed","error":"ETIMEDOUT"}
 ```
+
+## E2E Testing Checklist
+
+Automated E2E script (local DB only):
+```bash
+bun scripts/e2e_sync.js [table_name]
+```
+
+The script creates minimal diffs (insert/update/delete), exercises dry-run, per-table, full-sync, and YOLO flows, and writes a report to `logs/e2e-sync-report.json` (gitignored).
+
+Additional checks:
+- Scale test (example): `bun run sync -- --tables <large_table> --full-sync --dry-run`
+- Multi-table validation: `bun run sync -- --full-sync --dry-run`
+
+Note: timings are environment-specific; treat scale results as reference points rather than guarantees.
