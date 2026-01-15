@@ -345,7 +345,7 @@ For tables with `updated_at` or `created_at` timestamp columns, Driftwarden uses
 
 ### Full Sync (Detect Deletes)
 
-Use `--full-sync` to disable incremental sync and compare full table contents. This detects local-only rows (deletes) but can be slower for large tables.
+Use `--full-sync` to disable incremental sync and compare full table contents. This detects local-only rows (deletes) and remote-only rows (inserts) but can be slower for large tables.
 
 Example:
 ```bash
