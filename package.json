@@ -4,8 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "sync": "bun run src/cli.js",
+    "sync": "bun run src/cli.js sync",
+    "issues": "bun run src/cli.js issues",
     "test": "bun test"
+  },
+  "dependencies": {
+    "claude-code-sdk": "^0.1.0",
+    "mysql2": "^3.16.0",
+    "ssh2": "^1.17.0"
   }
 }
-
