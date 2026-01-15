@@ -64,6 +64,7 @@ OPTIONS:
   --yolo        Auto-accept all changes without confirmation
   --per-table   Confirm changes table-by-table
   --dry-run     Preview changes without applying them
+  --full-sync   Force full comparison (detect deletes), disables incremental sync
   --help, -h    Show this help message
   --version, -v Show version
 
@@ -73,6 +74,7 @@ EXAMPLES:
   driftwarden sync --config custom-config.json --yolo
   driftwarden sync --per-table
   driftwarden sync --dry-run
+  driftwarden sync --full-sync
 ```
 
 ## Configuration

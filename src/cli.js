@@ -36,6 +36,7 @@ OPTIONS:
   --yolo        Auto-accept all changes without confirmation
   --per-table   Confirm changes for each table individually
   --dry-run     Preview changes without applying them
+  --full-sync   Force full comparison (detect deletes), disables incremental sync
   --help, -h    Show this help message
   --version, -v Show version
 
@@ -64,6 +65,7 @@ function parseArgs(args) {
     yolo: false,
     perTable: false,
     dryRun: false,
+    fullSync: false,
     help: false,
     version: false,
   };
@@ -95,6 +97,9 @@ function parseArgs(args) {
       case '--dry-run':
         parsed.dryRun = true;
         break;
+      case '--full-sync':
+        parsed.fullSync = true;
+        break;
       case '--help':
       case '-h':
         parsed.help = true;
@@ -115,7 +120,7 @@ function parseArgs(args) {
 }
 
 async function runSync(options) {
-  const { config: configPath, tables, yolo, perTable, dryRun } = options;
+  const { config: configPath, tables, yolo, perTable, dryRun, fullSync } = options;
 
   logger.info('Starting Driftwarden sync...');
 
@@ -146,6 +151,7 @@ async function runSync(options) {
     yolo: config.sync.yolo,
     perTable,
     dryRun,
+    fullSync,
   });
 
   logger.info(`Config loaded from: ${configPath}`);
@@ -153,6 +159,7 @@ async function runSync(options) {
   logger.info(`YOLO mode: ${config.sync.yolo ? 'ENABLED' : 'DISABLED'}`);
   logger.info(`Per-table confirmation: ${perTable ? 'ENABLED' : 'DISABLED'}`);
   logger.info(`Dry run: ${dryRun ? 'YES' : 'NO'}`);
+  logger.info(`Full sync: ${fullSync ? 'YES' : 'NO'}`);
 
   let tunnel = null;
   let remoteReader = null;
@@ -199,12 +206,10 @@ async function runSync(options) {
 
     // Step 6: Diff data
     logger.info('Comparing data...');
-    const dataDiffs = await compareAllData(
-      remoteReader,
-      localWriter,
-      tablesToSync,
-      config.sync.chunkSize
-    );
+    const dataDiffs = await compareAllData(remoteReader, localWriter, tablesToSync, {
+      chunkSize: config.sync.chunkSize,
+      useIncremental: !fullSync,
+    });
 
     // Step 7: Display preview / dry-run
     if (dryRun) {

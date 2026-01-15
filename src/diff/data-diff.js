@@ -628,17 +628,23 @@ function formatValue(val) {
  * @param {object} remoteReader - Remote database reader
  * @param {object} localWriter - Local database writer
  * @param {string[]} tables - Tables to compare
- * @param {number} chunkSize - Chunk size for large tables
+ * @param {object|number} options - Comparison options or chunk size
  * @returns {Promise<object[]>} Array of data diffs
  */
-export async function compareAllData(remoteReader, localWriter, tables, chunkSize = 5000) {
+export async function compareAllData(remoteReader, localWriter, tables, options = {}) {
+  const resolvedOptions = typeof options === 'number' ? { chunkSize: options } : options;
+  const { chunkSize = 5000, useIncremental = true, streamingMode = true } = resolvedOptions;
   const diffs = [];
 
   logger.info(`Comparing data for ${tables.length} tables...`);
 
   for (const tableName of tables) {
     try {
-      const diff = await diffTableData(remoteReader, localWriter, tableName, { chunkSize });
+      const diff = await diffTableData(remoteReader, localWriter, tableName, {
+        chunkSize,
+        useIncremental,
+        streamingMode,
+      });
       diffs.push(diff);
     } catch (err) {
       logger.error(`Error comparing data for ${tableName}: ${err.message}`);

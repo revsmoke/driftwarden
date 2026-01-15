@@ -33,6 +33,7 @@ describe('CLI', () => {
     expect(stdout).toContain('--config');
     expect(stdout).toContain('--yolo');
     expect(stdout).toContain('--dry-run');
+    expect(stdout).toContain('--full-sync');
   });
 
   test('--version shows version', async () => {

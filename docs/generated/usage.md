@@ -148,6 +148,8 @@ bun run sync -- --yolo
 
 # Preview changes without applying (dry-run)
 bun run sync -- --dry-run
+# Force full comparison (detect deletes)
+bun run sync -- --full-sync
 
 # Combine options
 bun run sync -- --tables users --dry-run
@@ -180,6 +182,7 @@ bun run sync -- --version
 | `--yolo` | | Auto-accept all changes (including destructive) |
 | `--per-table` | | Confirm changes table-by-table |
 | `--dry-run` | | Preview only, no changes applied |
+| `--full-sync` | | Force full comparison (detect deletes), disables incremental sync |
 | `--help` | `-h` | Show help message |
 | `--version` | `-v` | Show version |
 
