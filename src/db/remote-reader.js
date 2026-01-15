@@ -12,6 +12,16 @@ import { withRetry, isRetryableError, DEFAULT_RETRY_CONFIG } from '../utils/retr
 const ALLOWED_OPERATIONS = ['SELECT', 'SHOW', 'DESCRIBE', 'DESC', 'EXPLAIN'];
 
 /**
+ * Detect identifier placeholders in SQL (??)
+ * These are not supported by prepared statements and must use query formatting.
+ * @param {string} sql - SQL query to inspect
+ * @returns {boolean} True if identifier placeholders are present
+ */
+function usesIdentifierPlaceholders(sql) {
+  return sql.includes('??');
+}
+
+/**
  * Validate that a query is read-only
  * @param {string} sql - SQL query to validate
  * @throws {Error} if query is not read-only
@@ -88,7 +98,9 @@ class RemoteReader {
     return withRetry(
       async () => {
         logger.debug(`Executing remote query: ${sql.substring(0, 100)}...`);
-        const [rows] = await this.connection.execute(sql, params);
+        const [rows] = usesIdentifierPlaceholders(sql)
+          ? await this.connection.query(sql, params)
+          : await this.connection.execute(sql, params);
         return rows;
       },
       {

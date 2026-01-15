@@ -9,6 +9,16 @@ import { logger } from '../utils/logger.js';
 import { withRetry, isRetryableError, DEFAULT_RETRY_CONFIG } from '../utils/retry.js';
 
 /**
+ * Detect identifier placeholders in SQL (??)
+ * These are not supported by prepared statements and must use query formatting.
+ * @param {string} sql - SQL query to inspect
+ * @returns {boolean} True if identifier placeholders are present
+ */
+function usesIdentifierPlaceholders(sql) {
+  return sql.includes('??');
+}
+
+/**
  * Create a MySQL connection to the local database
  * @param {object} config - MySQL config (host, port, user, password, database)
  * @param {object} retryConfig - Optional retry configuration
@@ -64,7 +74,9 @@ class LocalWriter {
     return withRetry(
       async () => {
         logger.debug(`Executing local query: ${sql.substring(0, 100)}...`);
-        const [rows] = await this.connection.execute(sql, params);
+        const [rows] = usesIdentifierPlaceholders(sql)
+          ? await this.connection.query(sql, params)
+          : await this.connection.execute(sql, params);
         return rows;
       },
       {
@@ -85,7 +97,9 @@ class LocalWriter {
     return withRetry(
       async () => {
         logger.debug(`Executing local write: ${sql.substring(0, 100)}...`);
-        const [result] = await this.connection.execute(sql, params);
+        const [result] = usesIdentifierPlaceholders(sql)
+          ? await this.connection.query(sql, params)
+          : await this.connection.execute(sql, params);
         return result;
       },
       {
