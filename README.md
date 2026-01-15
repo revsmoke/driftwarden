@@ -150,7 +150,7 @@ Create a `config/config.json` file with the following structure:
 - **Destructive changes require explicit "CONFIRM"**: Column removals, full table replacements, and large deletes (100+ rows) require typing "CONFIRM"
 - **Transaction safety**: Data changes are wrapped in transactions with rollback on error
 - **Preview first**: Always see what will change before it happens
-- **Incremental sync**: Tables with `updated_at` columns use efficient timestamp-based sync
+- **Incremental sync**: Tables with `updated_at` columns use efficient timestamp-based sync. Use `--full-sync` to detect deletes or force a full comparison (slower for large tables).
 - **Connection resilience**: Automatic retry with exponential backoff for transient errors
 
 ## Documentation

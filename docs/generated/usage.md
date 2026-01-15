@@ -343,6 +343,15 @@ For tables with `updated_at` or `created_at` timestamp columns, Driftwarden uses
 - Falls back to full comparison when timestamps unavailable
 - Note: Incremental sync cannot detect remote deletions (use `--full-sync` if needed)
 
+### Full Sync (Detect Deletes)
+
+Use `--full-sync` to disable incremental sync and compare full table contents. This detects local-only rows (deletes) but can be slower for large tables.
+
+Example:
+```bash
+bun run sync -- --tables postal_address --full-sync --per-table
+```
+
 ### Issue Tracking
 
 Driftwarden automatically tracks issues in the `issues/` directory:
