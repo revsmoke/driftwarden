@@ -1,0 +1,50 @@
+{
+  "ssh": {
+    "host": "prod.example.com",
+    "port": 22,
+    "user": "deploy",
+    "privateKeyPath": "~/.ssh/id_rsa",
+    "passphrase": ""
+  },
+  "tunnel": {
+    "localPort": 3307,
+    "remoteHost": "127.0.0.1",
+    "remotePort": 3306
+  },
+  "remote": {
+    "mysql": {
+      "host": "127.0.0.1",
+      "port": 3307,
+      "user": "readonly_user",
+      "password": "change_me",
+      "database": "production_db"
+    }
+  },
+  "local": {
+    "mysql": {
+      "host": "127.0.0.1",
+      "port": 3306,
+      "user": "local_user",
+      "password": "change_me",
+      "database": "local_db"
+    }
+  },
+  "sync": {
+    "tables": [],
+    "chunkSize": 5000,
+    "confirm": true,
+    "yolo": false
+  },
+  "retry": {
+    "maxAttempts": 5,
+    "baseDelayMs": 500,
+    "maxDelayMs": 30000,
+    "multiplier": 2
+  },
+  "logging": {
+    "level": "info",
+    "activityLog": "logs/activity.log",
+    "errorLog": "logs/error.log"
+  }
+}
+

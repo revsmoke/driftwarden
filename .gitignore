@@ -1,0 +1,14 @@
+.DS_Store
+node_modules/
+logs/
+*.log
+.env
+config/config.json
+.ralph_session
+.ralph_session_history
+.exit_signals
+.response_analysis
+.circuit_breaker_state
+status.json
+progress.json
+

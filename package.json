@@ -1,0 +1,11 @@
+{
+  "name": "driftwarden",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync": "bun run src/cli.js",
+    "test": "bun test"
+  }
+}
+
