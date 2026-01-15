@@ -14,7 +14,7 @@ import { logger } from '../utils/logger.js';
  * @returns {Promise<object>} Data diff with insert/update/delete operations
  */
 export async function diffTableData(remoteReader, localWriter, tableName, options = {}) {
-  const { chunkSize = 5000, primaryKey = null, useIncremental = true } = options;
+  const { chunkSize = 5000, primaryKey = null, useIncremental = true, streamingMode = true } = options;
 
   // Get table schema to find primary key
   const schema = await remoteReader.getTableSchema(tableName);
@@ -47,6 +47,166 @@ export async function diffTableData(remoteReader, localWriter, tableName, option
     }
   }
 
+  // Use streaming mode for large tables (default) or in-memory for small tables
+  if (streamingMode) {
+    return await streamingTableDiff(remoteReader, localWriter, tableName, pk, timestamps, chunkSize);
+  }
+
+  // Legacy in-memory approach (for backwards compatibility or small tables)
+  return await inMemoryTableDiff(remoteReader, localWriter, tableName, pk, timestamps, chunkSize);
+}
+
+/**
+ * Streaming/chunked table diff - processes data in batches to reduce memory usage
+ * Uses sorted merge join approach: both tables are read in PK order and compared chunk by chunk
+ */
+async function streamingTableDiff(remoteReader, localWriter, tableName, pk, timestamps, chunkSize) {
+  const diff = {
+    tableName,
+    primaryKey: pk,
+    hasTimestamps: timestamps.hasUpdatedAt || timestamps.hasCreatedAt,
+    toInsert: [],
+    toUpdate: [],
+    toDelete: [],
+    stats: {
+      remoteRows: 0,
+      localRows: 0,
+      inserts: 0,
+      updates: 0,
+      deletes: 0,
+    },
+  };
+
+  logger.info(`Using streaming diff for ${tableName} (memory-efficient mode)...`);
+
+  // Get row counts using available methods (fallback to counting during iteration)
+  if (typeof remoteReader.getRowCount === 'function') {
+    diff.stats.remoteRows = await remoteReader.getRowCount(tableName);
+  }
+  const [localCountResult] = await localWriter.query('SELECT COUNT(*) as count FROM ??', [tableName]);
+  diff.stats.localRows = localCountResult?.count || 0;
+
+  // Track remote PKs we've seen (for delete detection)
+  // Use a Set of PK strings - more memory efficient than storing full rows
+  const remoteKeysSeen = new Set();
+
+  // Process remote data in chunks, comparing against local on-the-fly
+  logger.info(`Streaming comparison for ${tableName}...`);
+  for await (const remoteChunk of remoteReader.getTableDataChunked(tableName, chunkSize, pk[0])) {
+    // Build PK lookup for this chunk
+    const chunkPKs = remoteChunk.map(row => buildPrimaryKeyValue(row, pk));
+
+    // Query local rows matching these PKs (batch lookup)
+    const localRows = await batchLookupByPK(localWriter, tableName, pk, remoteChunk);
+    const localIndex = new Map();
+    for (const row of localRows) {
+      const key = buildPrimaryKeyValue(row, pk);
+      localIndex.set(key, row);
+    }
+
+    // Compare each remote row against local
+    for (const remoteRow of remoteChunk) {
+      const key = buildPrimaryKeyValue(remoteRow, pk);
+      remoteKeysSeen.add(key);
+      // Count remote rows if we couldn't get count upfront
+      if (!diff.stats.remoteRows) {
+        diff.stats.remoteRows++;
+      }
+
+      const localRow = localIndex.get(key);
+
+      if (!localRow) {
+        // Row exists in remote but not local - INSERT
+        diff.toInsert.push(remoteRow);
+        diff.stats.inserts++;
+      } else if (!rowsEqual(remoteRow, localRow)) {
+        // Row exists in both but different - UPDATE
+        diff.toUpdate.push({
+          remote: remoteRow,
+          local: localRow,
+          changes: getRowChanges(localRow, remoteRow),
+        });
+        diff.stats.updates++;
+      }
+    }
+  }
+
+  // If we couldn't get remote count upfront, use seen count
+  if (!diff.stats.remoteRows) {
+    diff.stats.remoteRows = remoteKeysSeen.size;
+  }
+
+  // Scan local table for deletions (rows not in remote)
+  // Process in chunks to keep memory low
+  logger.debug(`Scanning local ${tableName} for deletions...`);
+  let localOffset = 0;
+  let localHasMore = true;
+
+  while (localHasMore) {
+    const localChunk = await localWriter.getTableData(tableName, {
+      limit: chunkSize,
+      offset: localOffset,
+      orderBy: pk[0],
+    });
+
+    for (const localRow of localChunk) {
+      const key = buildPrimaryKeyValue(localRow, pk);
+      if (!remoteKeysSeen.has(key)) {
+        diff.toDelete.push(localRow);
+        diff.stats.deletes++;
+      }
+    }
+
+    localOffset += localChunk.length;
+    localHasMore = localChunk.length === chunkSize;
+  }
+
+  logger.info(
+    `Data diff for ${tableName}: ` +
+    `${diff.stats.inserts} inserts, ${diff.stats.updates} updates, ${diff.stats.deletes} deletes`
+  );
+
+  return diff;
+}
+
+/**
+ * Batch lookup local rows by primary key values
+ * More efficient than individual queries for each row
+ */
+async function batchLookupByPK(localWriter, tableName, pk, remoteRows) {
+  if (remoteRows.length === 0) return [];
+
+  // For single-column PKs, use IN clause
+  if (pk.length === 1) {
+    const pkCol = pk[0];
+    const pkValues = remoteRows.map(row => row[pkCol]);
+    const placeholders = pkValues.map(() => '?').join(', ');
+    return await localWriter.query(
+      `SELECT * FROM ?? WHERE ?? IN (${placeholders})`,
+      [tableName, pkCol, ...pkValues]
+    );
+  }
+
+  // For composite PKs, use OR conditions (less efficient but correct)
+  const conditions = remoteRows.map(() => {
+    return `(${pk.map(() => '?? = ?').join(' AND ')})`;
+  }).join(' OR ');
+
+  const params = [tableName];
+  for (const row of remoteRows) {
+    for (const col of pk) {
+      params.push(col, row[col]);
+    }
+  }
+
+  return await localWriter.query(`SELECT * FROM ?? WHERE ${conditions}`, params);
+}
+
+/**
+ * Legacy in-memory table diff - loads all local data into memory
+ * Suitable for small tables or when memory is not a concern
+ */
+async function inMemoryTableDiff(remoteReader, localWriter, tableName, pk, timestamps, chunkSize) {
   const diff = {
     tableName,
     primaryKey: pk,

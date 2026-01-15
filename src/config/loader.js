@@ -126,6 +126,15 @@ export async function loadConfig(configPath) {
   // Apply defaults
   config = applyDefaults(config);
 
+  // Security recommendation: check for read-only user naming convention
+  const remoteUser = config.remote?.mysql?.user || '';
+  if (!remoteUser.includes('ro') && !remoteUser.includes('read') && !remoteUser.includes('replica')) {
+    logger.warn(
+      'SECURITY TIP: Consider using a read-only MySQL user for remote connections ' +
+      '(e.g., "driftwarden_ro"). See docs/generated/usage.md for setup instructions.'
+    );
+  }
+
   logger.debug('Config loaded and validated successfully');
   return config;
 }

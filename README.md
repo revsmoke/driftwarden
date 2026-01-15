@@ -4,9 +4,27 @@ Driftwarden is a developer tool that keeps **local MySQL databases** synchronize
 
 ## Installation
 
+**Prerequisites:** [Bun](https://bun.sh/) v1.0 or later
+
 ```bash
 # Install dependencies
 bun install
+```
+
+### Runtime Compatibility
+
+Driftwarden is designed for **Bun** as its primary runtime. While the codebase uses standard ES modules and may work with Node.js v18+, this is not officially supported or tested.
+
+| Runtime | Status |
+|---------|--------|
+| Bun 1.x | ✅ Supported (primary) |
+| Node.js 18+ | ⚠️ May work, not tested |
+| Deno | ❌ Not supported |
+
+For Node.js users who want to try:
+```bash
+# Experimental - not officially supported
+node --experimental-modules src/cli.js sync --config config/config.json
 ```
 
 ## Quick Start

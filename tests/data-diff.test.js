@@ -26,9 +26,15 @@ function createLocalWriter(rows) {
     async getTableData(_tableName, { limit, offset }) {
       return rows.slice(offset, offset + limit);
     },
-    async query(sql) {
+    async query(sql, params = []) {
       if (sql.startsWith('SELECT COUNT')) {
         return [{ count: rows.length }];
+      }
+      // Handle batch lookup queries (SELECT * FROM ?? WHERE ?? IN (...))
+      if (sql.includes('IN (') && params.length > 2) {
+        const pkCol = params[1]; // Second param is the PK column name
+        const pkValues = params.slice(2); // Remaining params are PK values
+        return rows.filter(row => pkValues.includes(row[pkCol]));
       }
       return [];
     },

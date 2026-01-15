@@ -11,12 +11,12 @@
 - [x] Update docs for new flags/behavior and verification steps
 
 ## Medium Priority
-- [ ] Reduce large‑table memory usage (streaming or chunked local diff)
-- [ ] Add DB‑level read‑only guidance/checks in config/docs
-- [ ] Add optional Node/Deno compatibility or document out of scope
+- [x] Reduce large‑table memory usage (streaming or chunked local diff)
+- [x] Add DB‑level read‑only guidance/checks in config/docs
+- [x] Add optional Node/Deno compatibility or document out of scope
 
 ## Low Priority
-- [ ] Add metrics summary output
+- [x] Add metrics summary output
 
 ## Completed
 - [x] Baseline sync implementation, docs generated, unit tests passing

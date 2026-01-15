@@ -41,7 +41,7 @@ cp config/config.json.example config/config.json
     "mysql": {
       "host": "127.0.0.1",
       "port": 3306,
-      "user": "db_user",
+      "user": "driftwarden_ro",
       "password": "db_password",
       "database": "production_db"
     }
@@ -101,6 +101,8 @@ cp config/config.json.example config/config.json
 | `user` | MySQL username | Yes |
 | `password` | MySQL password | Yes |
 | `database` | Database name | Yes |
+
+**⚠️ Security Best Practice:** For `remote.mysql.user`, use a dedicated **read-only MySQL user** (e.g., `driftwarden_ro`). This provides database-level protection against accidental writes, complementing Driftwarden's application-level read-only enforcement. See the [Remote Database Protection](#remote-database-protection) section for setup instructions.
 
 #### Sync Settings
 | Field | Description | Default |
@@ -287,6 +289,34 @@ Apply these changes? [y/N]
 - Remote database is **read-only**
 - Only SELECT, SHOW, DESCRIBE, EXPLAIN queries allowed
 - No INSERT, UPDATE, DELETE, ALTER, DROP, CREATE, TRUNCATE
+
+**Recommended: Use a read-only MySQL user for remote connections**
+
+For maximum safety, create a dedicated read-only MySQL user on your production database:
+
+```sql
+-- Create a read-only user (run as MySQL admin)
+CREATE USER 'driftwarden_ro'@'%' IDENTIFIED BY 'secure_password';
+
+-- Grant SELECT-only access to the target database
+GRANT SELECT ON production_db.* TO 'driftwarden_ro'@'%';
+
+-- Optional: Restrict to specific tables
+-- GRANT SELECT ON production_db.users TO 'driftwarden_ro'@'%';
+-- GRANT SELECT ON production_db.orders TO 'driftwarden_ro'@'%';
+
+-- Apply changes
+FLUSH PRIVILEGES;
+```
+
+This provides defense-in-depth: even if Driftwarden's read-only enforcement were bypassed, the database user itself cannot modify data.
+
+**Verifying read-only access:**
+```bash
+# Test that writes are blocked at the MySQL level
+mysql -u driftwarden_ro -p production_db -e "DELETE FROM users LIMIT 0;"
+# Expected: ERROR 1142 (42000): DELETE command denied
+```
 
 ### Local Database Safety
 - All changes require confirmation (unless `--yolo`)

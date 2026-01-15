@@ -381,6 +381,133 @@ export function displayDryRun(schemaDiffs, dataDiffs) {
   console.log('\n[DRY RUN] No changes were applied.\n');
 }
 
+/**
+ * Generate and display post-sync metrics summary
+ * @param {object} results - Sync results
+ * @param {number} startTime - Start timestamp (Date.now())
+ * @returns {string} Formatted metrics summary
+ */
+export function generateMetricsSummary(results, startTime) {
+  const duration = Date.now() - startTime;
+  const durationSec = (duration / 1000).toFixed(2);
+
+  const lines = [];
+  lines.push('\n' + '═'.repeat(60));
+  lines.push('                    SYNC COMPLETE');
+  lines.push('═'.repeat(60));
+
+  // Timing
+  lines.push(`\n⏱  Duration: ${durationSec}s`);
+
+  // Schema changes
+  const schemaApplied = results.schemaApplied || [];
+  if (schemaApplied.length > 0) {
+    lines.push(`\n📋 SCHEMA CHANGES APPLIED: ${schemaApplied.length} table(s)`);
+    for (const diff of schemaApplied) {
+      const changes = [];
+      if (diff.columnsToAdd?.length) changes.push(`+${diff.columnsToAdd.length} cols`);
+      if (diff.columnsToModify?.length) changes.push(`~${diff.columnsToModify.length} cols`);
+      if (diff.columnsToRemove?.length) changes.push(`-${diff.columnsToRemove.length} cols`);
+      lines.push(`   • ${diff.tableName}: ${changes.join(', ') || 'structure changes'}`);
+    }
+  }
+
+  // Data changes
+  const dataApplied = results.dataApplied || [];
+  let totalInserts = 0;
+  let totalUpdates = 0;
+  let totalDeletes = 0;
+
+  for (const diff of dataApplied) {
+    totalInserts += diff.stats?.inserts || 0;
+    totalUpdates += diff.stats?.updates || 0;
+    totalDeletes += diff.stats?.deletes || 0;
+  }
+
+  if (dataApplied.length > 0) {
+    lines.push(`\n📊 DATA CHANGES APPLIED: ${dataApplied.length} table(s)`);
+    lines.push(`   Total rows affected:`);
+    lines.push(`     ✚ Inserted: ${totalInserts}`);
+    lines.push(`     ⟳ Updated:  ${totalUpdates}`);
+    lines.push(`     ✖ Deleted:  ${totalDeletes}`);
+
+    // Per-table breakdown for tables with significant changes
+    const significantTables = dataApplied.filter(
+      d => (d.stats?.inserts || 0) + (d.stats?.updates || 0) + (d.stats?.deletes || 0) > 10
+    );
+    if (significantTables.length > 0) {
+      lines.push(`\n   Table breakdown:`);
+      for (const diff of significantTables) {
+        const { inserts = 0, updates = 0, deletes = 0 } = diff.stats || {};
+        lines.push(`     ${diff.tableName}: +${inserts} ~${updates} -${deletes}`);
+      }
+    }
+  }
+
+  // Skipped/errors
+  const skipped = results.skipped || [];
+  const errors = results.errors || [];
+
+  if (skipped.length > 0) {
+    lines.push(`\n⏭  SKIPPED: ${skipped.length} table(s)`);
+    for (const item of skipped.slice(0, 5)) {
+      lines.push(`   • ${item.table}: ${item.reason}`);
+    }
+    if (skipped.length > 5) {
+      lines.push(`   ... and ${skipped.length - 5} more`);
+    }
+  }
+
+  if (errors.length > 0) {
+    lines.push(`\n❌ ERRORS: ${errors.length}`);
+    for (const err of errors.slice(0, 5)) {
+      lines.push(`   • ${err.table || 'general'}: ${err.message}`);
+    }
+    if (errors.length > 5) {
+      lines.push(`   ... and ${errors.length - 5} more`);
+    }
+  }
+
+  // Final status
+  const hasChanges = schemaApplied.length > 0 || totalInserts > 0 || totalUpdates > 0 || totalDeletes > 0;
+  const hasErrors = errors.length > 0;
+
+  lines.push('\n' + '─'.repeat(60));
+  if (hasErrors) {
+    lines.push('⚠️  Sync completed with errors. Check logs for details.');
+  } else if (hasChanges) {
+    lines.push('✓  Sync completed successfully!');
+  } else {
+    lines.push('✓  No changes needed - databases are in sync.');
+  }
+  lines.push('═'.repeat(60) + '\n');
+
+  const summary = lines.join('\n');
+
+  // Log metrics
+  logger.activity('sync_complete', {
+    durationMs: duration,
+    schemaTablesChanged: schemaApplied.length,
+    dataTablesChanged: dataApplied.length,
+    totalInserts,
+    totalUpdates,
+    totalDeletes,
+    errorsCount: errors.length,
+    skippedCount: skipped.length,
+  });
+
+  return summary;
+}
+
+/**
+ * Display post-sync metrics
+ * @param {object} results - Sync results
+ * @param {number} startTime - Start timestamp
+ */
+export function displayMetricsSummary(results, startTime) {
+  console.log(generateMetricsSummary(results, startTime));
+}
+
 export default {
   generatePreview,
   confirm,
@@ -389,4 +516,6 @@ export default {
   confirmDestructiveChanges,
   interactiveConfirm,
   displayDryRun,
+  generateMetricsSummary,
+  displayMetricsSummary,
 };
