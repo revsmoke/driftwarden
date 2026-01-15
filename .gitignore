@@ -9,6 +9,10 @@ config/config.json
 .exit_signals
 .response_analysis
 .circuit_breaker_state
+.circuit_breaker_history
+.call_count
+.last_reset
+.ralph_evidence.json
 status.json
 progress.json
 
