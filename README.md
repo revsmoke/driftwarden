@@ -157,6 +157,8 @@ Create a `config/config.json` file with the following structure:
 
 - [Architecture Guide](docs/generated/architecture.md) - System design, components, and data flow
 - [Usage Guide](docs/generated/usage.md) - Detailed configuration and usage instructions
+- [Roadmap](ROADMAP.md) - High-level direction and milestones
+- [Contributing](CONTRIBUTING.md) - How to report issues and propose changes
 
 ## E2E Testing
 
